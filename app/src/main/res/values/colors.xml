@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#6200EE</color>
+    <color name="colorPrimaryDark">#3700B3</color>
+    <color name="colorAccent">#FD4207</color>
+
+    <color name="darkBlue">#00001C</color>
+    <color name="player_sheet_bg">#2F0A83</color>
+</resources>
