@@ -7,7 +7,8 @@
     android:background="@drawable/player_sheet_bg"
     app:behavior_hideable="true"
     app:behavior_peekHeight="70dp"
-    app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+    app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
+    android:id="@+id/player_sheet">
 
     <ImageView
         android:id="@+id/play_btn"
