@@ -9,7 +9,7 @@
         android:id="@+id/imageView"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:layout_marginStart="16dp"
+        android:layout_marginStart="12dp"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -35,5 +35,6 @@
         android:text="TextView"
         app:layout_constraintBottom_toBottomOf="@+id/imageView"
         app:layout_constraintStart_toStartOf="@+id/item_title"
-        android:textSize="16sp"/>
+        android:paddingTop="4dp"
+        />
 </androidx.constraintlayout.widget.ConstraintLayout>

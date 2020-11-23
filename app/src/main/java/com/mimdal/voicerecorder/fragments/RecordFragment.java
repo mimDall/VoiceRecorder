@@ -3,11 +3,13 @@ package com.mimdal.voicerecorder.fragments;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.media.MediaRecorder;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
@@ -82,7 +84,27 @@ public class RecordFragment extends Fragment implements View.OnClickListener {
         switch (view.getId()) {
 
             case R.id.record_list_btn:
-                navController.navigate(R.id.action_recordFragment_to_audioListFragment);
+
+                if (recording) {
+
+                    new AlertDialog.Builder(requireActivity())
+                            .setTitle("Warning!")
+                            .setMessage("Audio still recording.\nAre you sure to stop recording?")
+                            .setPositiveButton("yes", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    navController.navigate(R.id.action_recordFragment_to_audioListFragment);
+
+                                }
+                            })
+                            .setNegativeButton("No", null)
+                            .create()
+                            .show();
+
+                } else {
+
+                    navController.navigate(R.id.action_recordFragment_to_audioListFragment);
+                }
                 break;
 
             case R.id.record_btn:
@@ -150,12 +172,12 @@ public class RecordFragment extends Fragment implements View.OnClickListener {
         Date currentDate = new Date();
 
         String recordFile = "Recording_" + simpleDateFormat.format(currentDate) + ".3gp";
-        record_fileName.setText("Recording, File Name: "+recordFile);
+        record_fileName.setText("Recording, File Name: " + recordFile);
         mediaRecorder = new MediaRecorder();
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
         mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-        mediaRecorder.setOutputFile(recordPath+"/"+recordFile);
+        mediaRecorder.setOutputFile(recordPath + "/" + recordFile);
         try {
             mediaRecorder.prepare();
         } catch (IOException e) {
@@ -165,5 +187,12 @@ public class RecordFragment extends Fragment implements View.OnClickListener {
 
     }
 
+    @Override
+    public void onStop() {
+        super.onStop();
+        if (recording) {
 
+            stopRecording();
+        }
+    }
 }

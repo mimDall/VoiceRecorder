@@ -44,6 +44,7 @@
         app:srcCompat="@drawable/player_forward_btn" />
 
     <SeekBar
+        android:id="@+id/player_sheet_seekBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="32dp"
@@ -60,7 +61,7 @@
         android:layout_marginTop="32dp"
         android:layout_marginEnd="16dp"
         android:fontFamily="@font/open_sans_semibold"
-        android:text="file name"
+        android:text=""
         android:textAlignment="center"
         android:textColor="@android:color/white"
         android:textSize="18sp"

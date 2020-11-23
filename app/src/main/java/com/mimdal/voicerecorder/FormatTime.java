@@ -10,10 +10,10 @@ public class FormatTime {
         Date now = new Date();
         String res = "";
 
-        long seconds = TimeUnit.MILLISECONDS.toSeconds(time);
-        long minutes = TimeUnit.MILLISECONDS.toMinutes(time);
-        long hours = TimeUnit.MILLISECONDS.toHours(time);
-        long days = TimeUnit.MILLISECONDS.toDays(time);
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(now.getTime() - time);
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(now.getTime() -time);
+        long hours = TimeUnit.MILLISECONDS.toHours(now.getTime() -time);
+        long days = TimeUnit.MILLISECONDS.toDays(now.getTime() -time);
 
         if (seconds < 60) {
             res = "just now";
