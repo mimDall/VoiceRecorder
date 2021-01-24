@@ -5,13 +5,13 @@ import android.os.Environment;
 
 import com.mimdal.voicerecorder.Helper.SingletonSharedPrefs;
 
-class MyAPP extends Application {
+public class MyAPP extends Application {
 
     @Override
     public void onCreate() {
         super.onCreate();
 
-        SingletonSharedPrefs.init(this, "VOICE_RECORDER_PREF");
+        SingletonSharedPrefs.init(getApplicationContext(), "VOICE_RECORDER_PREF");
     }
 
 }

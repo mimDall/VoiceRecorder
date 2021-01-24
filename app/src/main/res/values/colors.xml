@@ -2,20 +2,12 @@
 <resources>
     <color name="colorPrimary">#6200EE</color>
     <color name="colorPrimaryDark">#3700B3</color>
-    <color name="colorAccent">#FD4207</color>
+    <color name="colorAccent">#fff</color>
+    <color name="player_bg">#E91E63</color>
+    <color name="darkBlue">#03035A</color>
+<!--    <color name="player_sheet_bg">#2F0A83</color>-->
 
-    <color name="darkBlue">#00001C</color>
-    <color name="player_sheet_bg">#2F0A83</color>
 
 
-
-<!--    <color name="primaryColor">#035903</color>-->
-<!--    <color name="primaryLightColor">#3f8733</color>-->
-<!--    <color name="primaryDarkColor">#002e00</color>-->
-<!--    <color name="secondaryColor">#ff6f00</color>-->
-<!--    <color name="secondaryLightColor">#ffa040</color>-->
-<!--    <color name="secondaryDarkColor">#c43e00</color>-->
-<!--    <color name="primaryTextColor">#ffffff</color>-->
-<!--    <color name="secondaryTextColor">#000000</color>-->
 
 </resources>

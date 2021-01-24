@@ -1,12 +1,22 @@
 package com.mimdal.voicerecorder.fragments;
 
-import android.Manifest;
-import android.app.Activity;
-import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.media.MediaRecorder;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.SystemClock;
+import android.provider.Settings;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Chronometer;
+import android.widget.ImageView;
+import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -16,40 +26,45 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 
-import android.os.SystemClock;
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.Chronometer;
-import android.widget.ImageView;
-import android.widget.TextView;
-
 import com.mimdal.voicerecorder.Helper.PermissionUtils;
 import com.mimdal.voicerecorder.R;
+import com.visualizer.amplitude.AudioRecordView;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
 public class RecordFragment extends Fragment implements View.OnClickListener {
 
-    ImageView record_list_btn;
-    ImageView record_btn;
-    NavController navController;
+    private ImageView record_list_btn;
+    private ImageView record_btn;
+    private NavController navController;
     private boolean recording = false;
     private static final String TAG = "RecordFragment";
-    Chronometer record_chronometer;
-    TextView record_fileName;
+    private Chronometer record_chronometer;
+    private TextView record_fileName;
 
-    String[] permission = {"android.permission.RECORD_AUDIO"};
-    private int REQUEST_PERMISSION_CODE = 100;
+    private PermissionUtils permissionsUtils;
 
-    MediaRecorder mediaRecorder;
+    private final String[] PERMISSIONS = {"android.permission.RECORD_AUDIO",
+            "android.permission.READ_EXTERNAL_STORAGE",
+            "android.permission.WRITE_EXTERNAL_STORAGE"
+    };
+    private final int REQUEST_PERMISSIONS_CODE = 100;
+
+
+    private MediaRecorder mediaRecorder;
+
+    private AudioRecordView audioRecordView;
+    private Handler handlerWave;
+    private Runnable runnableWave;
+
+    private long startTime;
+    private long endTime;
+    private long recordingDuration;
+
 
     public RecordFragment() {
         // Required empty public constructor
@@ -77,6 +92,9 @@ public class RecordFragment extends Fragment implements View.OnClickListener {
         record_btn.setOnClickListener(this);
 
 
+        audioRecordView = view.findViewById(R.id.audioRecordView);
+
+
     }
 
     @Override
@@ -93,6 +111,8 @@ public class RecordFragment extends Fragment implements View.OnClickListener {
                             .setPositiveButton("yes", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialogInterface, int i) {
+                                    stopRecording();
+                                    recording = false;
                                     navController.navigate(R.id.action_recordFragment_to_audioListFragment);
 
                                 }
@@ -103,7 +123,12 @@ public class RecordFragment extends Fragment implements View.OnClickListener {
 
                 } else {
 
-                    navController.navigate(R.id.action_recordFragment_to_audioListFragment);
+                    RecordFragmentDirections.ActionRecordFragmentToAudioListFragment action = RecordFragmentDirections.actionRecordFragmentToAudioListFragment();
+                    action.setDuration(28);
+
+                    navController.navigate(action);
+
+//                    navController.navigate(R.id.action_recordFragment_to_audioListFragment);
                 }
                 break;
 
@@ -116,33 +141,71 @@ public class RecordFragment extends Fragment implements View.OnClickListener {
 
                 } else {
 
-                    record_btn.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.record_btn_recording, null));
-                    recording = true;
-                    startRecording();
+                    new PermissionUtils(
+                            requireActivity(),
+                            new PermissionUtils.PermissionAskListener() {
+                                @Override
+                                public void onPermissionGranted() {
+                                    record_btn.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.record_btn_recording, null));
+                                    recording = true;
+                                    startRecording();
+                                }
 
-                    new PermissionUtils(getActivity(), new PermissionUtils.PermissionAskListener() {
-                        @Override
-                        public void onPermissionGranted() {
+                                @Override
+                                public void onPermissionRequest() {
 
-                        }
+                                    ActivityCompat.requestPermissions(requireActivity(), PERMISSIONS, REQUEST_PERMISSIONS_CODE);
 
-                        @Override
-                        public void onPermissionRequest() {
+                                }
 
-                            ActivityCompat.requestPermissions(requireActivity(), permission, REQUEST_PERMISSION_CODE);
-                        }
+                                @Override
+                                public void onPermissionPreviouslyDenied() {
+                                    new AlertDialog.Builder(requireActivity())
+                                            .setTitle("permission required")
+                                            .setMessage("permission(s) needed for app to work well.")
+                                            .setPositiveButton("Allow", new DialogInterface.OnClickListener() {
+                                                @Override
+                                                public void onClick(DialogInterface dialog, int which) {
 
-                        @Override
-                        public void onPermissionPreviouslyDenied() {
+                                                    onPermissionRequest();
+                                                }
+                                            })
+                                            .setNegativeButton("cancel", new DialogInterface.OnClickListener() {
+                                                @Override
+                                                public void onClick(DialogInterface dialog, int which) {
+                                                    dialog.dismiss();
+                                                }
+                                            })
+                                            .create()
+                                            .show();
 
-                        }
+                                }
 
-                        @Override
-                        public void onPermissionDisabled() {
+                                @Override
+                                public void onPermissionDisabled() {
 
-                        }
-                    }, permission).checkPermissions();
+                                    new AlertDialog.Builder(requireActivity())
+                                            .setTitle("permission disabled")
+                                            .setMessage("enable permission in following path. setting>user>permission")
+                                            .setPositiveButton("go to setting", new DialogInterface.OnClickListener() {
+                                                @Override
+                                                public void onClick(DialogInterface dialog, int which) {
+                                                    requireActivity().startActivity(new Intent(Settings.ACTION_SETTINGS));
+                                                }
+                                            })
+                                            .setNegativeButton("cancel", new DialogInterface.OnClickListener() {
+                                                @Override
+                                                public void onClick(DialogInterface dialog, int which) {
+                                                    dialog.dismiss();
 
+                                                }
+                                            })
+                                            .create()
+                                            .show();
+
+                                }
+                            }, PERMISSIONS)
+                            .checkPermissions();
 
                 }
 
@@ -154,45 +217,114 @@ public class RecordFragment extends Fragment implements View.OnClickListener {
 
         record_chronometer.stop();
         mediaRecorder.stop();
+        endTime = SystemClock.elapsedRealtime();
+        recordingDuration = startTime - endTime;
         mediaRecorder.release();
         mediaRecorder = null;
         record_fileName.setText("press the mic button\nto start recording");
+        handlerWave.removeCallbacks(runnableWave);
+
     }
 
     private void startRecording() {
 
         record_chronometer.setBase(SystemClock.elapsedRealtime());
+        startTime = SystemClock.elapsedRealtime();
         record_chronometer.start();
-        String recordPath = requireActivity().getExternalFilesDir(null).getAbsolutePath();
 
+
+//        String recordPath = requireActivity().getExternalFilesDir(null).getAbsolutePath();
+
+        File file = new File(Environment.getExternalStorageDirectory(), "VoiceRecorder");
+
+        if (!file.exists()) {
+            file.mkdirs();
+        }
         /*
             use this pattern in order to make a unique name
          */
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy_mm_dd_hh_mm_ss", Locale.CANADA);
         Date currentDate = new Date();
 
-        String recordFile = "Recording_" + simpleDateFormat.format(currentDate) + ".3gp";
+        String recordFile = "Recording_" + simpleDateFormat.format(currentDate) + ".MPEG4";
         record_fileName.setText("Recording, File Name: " + recordFile);
         mediaRecorder = new MediaRecorder();
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-        mediaRecorder.setOutputFile(recordPath + "/" + recordFile);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        mediaRecorder.setAudioEncoder(MediaRecorder.OutputFormat.AMR_NB);
+        mediaRecorder.setAudioEncodingBitRate(16 * 44100);
+        mediaRecorder.setAudioSamplingRate(44100);
+        mediaRecorder.setOutputFile(file.getPath() + "/" + recordFile);
+
         try {
             mediaRecorder.prepare();
+            mediaRecorder.start();
         } catch (IOException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
+
+            Log.d(TAG, "startRecording: " + e.getStackTrace());
+            Log.d(TAG, "startRecording: " + e.getMessage());
         }
-        mediaRecorder.start();
+        handlerWave = new Handler();
+        updateWave();
 
     }
 
-    @Override
-    public void onStop() {
-        super.onStop();
-        if (recording) {
+    private void updateWave() {
 
-            stopRecording();
-        }
+        runnableWave = new Runnable() {
+            @Override
+            public void run() {
+                int currentMaxAmplitude = mediaRecorder.getMaxAmplitude();
+
+                Log.d(TAG, "currentMaxAmplitude: " + currentMaxAmplitude);
+                audioRecordView.update(currentMaxAmplitude);
+
+                //audioRecordView.recreate();
+
+                handlerWave.postDelayed(this, 100);
+            }
+        };
+
+        handlerWave.post(runnableWave);
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        OnBackPressedCallback callback = new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+
+                if (recording) {
+
+                    new AlertDialog.Builder(requireActivity())
+                            .setTitle("Warning!")
+                            .setMessage("Audio still recording.\nAre you sure to stop recording and exit application?")
+                            .setPositiveButton("yes", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    stopRecording();
+                                    Log.d(TAG, "exit app");
+                                    requireActivity().finish();
+
+                                }
+                            })
+                            .setNegativeButton("No", null)
+                            .create()
+                            .show();
+
+
+                } else {
+                    requireActivity().finish();
+
+                }
+
+
+            }
+        };
+
+        requireActivity().getOnBackPressedDispatcher().addCallback(this, callback);
     }
 }

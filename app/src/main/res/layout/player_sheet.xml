@@ -6,65 +6,66 @@
     android:layout_height="wrap_content"
     android:background="@drawable/player_sheet_bg"
     app:behavior_hideable="true"
-    app:behavior_peekHeight="70dp"
+    app:behavior_peekHeight="50dp"
     app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
-    android:id="@+id/player_sheet">
+    android:id="@+id/player_sheet"
+  >
 
     <ImageView
-        android:id="@+id/play_btn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:id="@+id/player_sheet_play_btn"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
         android:layout_marginTop="16dp"
-        android:padding="16dp"
+        android:padding="6dp"
         android:src="@drawable/player_play_btn"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/player_sheet_fileName" />
 
     <ImageView
-        android:id="@+id/player_back_btn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:padding="16dp"
-        app:layout_constraintBottom_toBottomOf="@+id/play_btn"
-        app:layout_constraintEnd_toStartOf="@+id/play_btn"
+        android:id="@+id/player_sheet_back_btn"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:padding="8dp"
+        app:layout_constraintBottom_toBottomOf="@+id/player_sheet_play_btn"
+        app:layout_constraintEnd_toStartOf="@+id/player_sheet_play_btn"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/play_btn"
+        app:layout_constraintTop_toTopOf="@+id/player_sheet_play_btn"
         app:srcCompat="@drawable/player_back_btn" />
 
     <ImageView
-        android:id="@+id/player_forward_btn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:padding="16dp"
-        app:layout_constraintBottom_toBottomOf="@+id/play_btn"
+        android:id="@+id/player_sheet_forward_btn"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:padding="8dp"
+        app:layout_constraintBottom_toBottomOf="@+id/player_sheet_play_btn"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/play_btn"
-        app:layout_constraintTop_toTopOf="@+id/play_btn"
+        app:layout_constraintStart_toEndOf="@+id/player_sheet_play_btn"
+        app:layout_constraintTop_toTopOf="@+id/player_sheet_play_btn"
         app:srcCompat="@drawable/player_forward_btn" />
 
     <SeekBar
         android:id="@+id/player_sheet_seekBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_margin="32dp"
+        android:layout_margin="24dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/play_btn" />
+        app:layout_constraintTop_toBottomOf="@id/player_sheet_play_btn" />
 
     <TextView
         android:id="@+id/player_sheet_fileName"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
         android:fontFamily="@font/open_sans_semibold"
+        android:gravity="center"
         android:text=""
-        android:textAlignment="center"
         android:textColor="@android:color/white"
-        android:textSize="18sp"
+        android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
@@ -82,8 +83,8 @@
 
         <ImageView
             android:id="@+id/player_sheet_icon"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginBottom="16dp"
@@ -100,7 +101,7 @@
             android:fontFamily="@font/open_sans_semibold"
             android:text="Media player"
             android:textColor="@android:color/white"
-            android:textSize="16sp"
+            android:textSize="15sp"
             app:layout_constraintBottom_toBottomOf="@+id/player_sheet_icon"
             app:layout_constraintHorizontal_chainStyle="spread_inside"
             app:layout_constraintStart_toEndOf="@+id/player_sheet_icon"
@@ -115,12 +116,36 @@
             android:fontFamily="@font/open_sans_semibold"
             android:text="now playing"
             android:textColor="@android:color/white"
-            android:textSize="16sp"
+            android:textSize="15sp"
             app:layout_constraintBottom_toBottomOf="@+id/player_sheet_name"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.75"
+            app:layout_constraintHorizontal_bias="0.8"
             app:layout_constraintStart_toEndOf="@+id/player_sheet_name"
             app:layout_constraintTop_toTopOf="@+id/player_sheet_name" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <TextView
+        android:id="@+id/player_sheet_start_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="8dp"
+        android:text=""
+        app:layout_constraintBottom_toTopOf="@+id/player_sheet_seekBar"
+        app:layout_constraintStart_toStartOf="parent"
+        android:textSize="12sp"
+        android:textColor="@android:color/white"/>
+
+    <TextView
+        android:id="@+id/player_sheet_end_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        android:text=""
+        app:layout_constraintBottom_toTopOf="@+id/player_sheet_seekBar"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:textSize="12sp"
+        android:textColor="@android:color/white"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

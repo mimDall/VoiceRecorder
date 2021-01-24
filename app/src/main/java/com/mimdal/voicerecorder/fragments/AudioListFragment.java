@@ -1,16 +1,10 @@
 package com.mimdal.voicerecorder.fragments;
 
+import android.content.DialogInterface;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.os.Bundle;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.core.content.res.ResourcesCompat;
-import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
+import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -19,13 +13,29 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.content.res.ResourcesCompat;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.mimdal.voicerecorder.Adapter.AudioListAdapter;
+import com.mimdal.voicerecorder.Utils.DateConverter;
+import com.mimdal.voicerecorder.Model.RecordingListItem;
 import com.mimdal.voicerecorder.R;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 
 
 public class AudioListFragment extends Fragment implements AudioListAdapter.OnItemAudioListClickListener {
@@ -35,17 +45,25 @@ public class AudioListFragment extends Fragment implements AudioListAdapter.OnIt
     BottomSheetBehavior bottomSheetBehavior;
     RecyclerView audio_list;
     File[] recordingList;
+    List<RecordingListItem> recordingListForRecycler;
     AudioListAdapter audioListAdapter;
-    TextView player_sheet_title, player_sheet_fileName;
-    ImageView play_btn;
+    TextView player_sheet_title, player_sheet_fileName, player_sheet_start_time, player_sheet_end_time;
+    ImageView player_sheet_play_btn, player_sheet_back_btn, player_sheet_forward_btn;
     private boolean isPlaying = false;
     private MediaPlayer mediaPlayer = null;
     private File fileToPlay;
 
 
     private Handler playerHandler;
-    private Runnable playerRunnable;
+    private Runnable seekBarRunnable;
     private SeekBar player_sheet_seekBar;
+
+    // for get duration of file
+    private MediaMetadataRetriever mediaMetadataRetriever;
+
+
+    private Runnable counterTimeRunnable;
+    private long counterTime = -1;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -62,19 +80,51 @@ public class AudioListFragment extends Fragment implements AudioListAdapter.OnIt
         audio_list = view.findViewById(R.id.audio_list);
         player_sheet_title = view.findViewById(R.id.player_sheet_title);
         player_sheet_fileName = view.findViewById(R.id.player_sheet_fileName);
-        play_btn = view.findViewById(R.id.play_btn);
+        player_sheet_start_time = view.findViewById(R.id.player_sheet_start_time);
+        player_sheet_end_time = view.findViewById(R.id.player_sheet_end_time);
+        player_sheet_play_btn = view.findViewById(R.id.player_sheet_play_btn);
+        player_sheet_back_btn = view.findViewById(R.id.player_sheet_back_btn);
+        player_sheet_forward_btn = view.findViewById(R.id.player_sheet_forward_btn);
+        player_sheet_seekBar = view.findViewById(R.id.player_sheet_seekBar);
 
+        mediaPlayer = new MediaPlayer();
 
         bottomSheetBehavior = BottomSheetBehavior.from(player_sheet);
-        String path = requireActivity().getExternalFilesDir(null).getAbsolutePath();
+//        String path = requireActivity().getExternalFilesDir(null).getAbsolutePath(); // TODO:check permission
+        String path = Environment.getExternalStorageDirectory().getAbsolutePath()+"/VoiceRecorder";
+        recordingListForRecycler = new ArrayList();
         File directory = new File(path);
         recordingList = directory.listFiles();
+        Arrays.sort(recordingList, new Comparator<File>() {
+            @Override
+            public int compare(File f1, File f2) {
 
-        audioListAdapter = new AudioListAdapter(recordingList, this);
+                if (f1.lastModified() < f2.lastModified()) {
+
+                    return 1;
+                } else if (f1.lastModified() > f2.lastModified()) {
+
+                    return -1;
+                } else {
+                    return 0;
+                }
+
+            }
+        });
+
+
+        for (File file : recordingList) {
+
+            recordingListForRecycler.add(new RecordingListItem(file,
+                    DateConverter.sizeStandardFormat(file.length()),
+                    DateConverter.timeStandardFormat(Long.parseLong(getFileDuration(file)))
+            ));
+
+        }
+
+        audioListAdapter = new AudioListAdapter(recordingListForRecycler, this);
         audio_list.setLayoutManager(new LinearLayoutManager(requireActivity()));
         audio_list.setAdapter(audioListAdapter);
-
-        player_sheet_seekBar = view.findViewById(R.id.player_sheet_seekBar);
 
 
         bottomSheetBehavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
@@ -93,7 +143,7 @@ public class AudioListFragment extends Fragment implements AudioListAdapter.OnIt
             }
         });
 
-        play_btn.setOnClickListener(new View.OnClickListener() {
+        player_sheet_play_btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
@@ -109,6 +159,31 @@ public class AudioListFragment extends Fragment implements AudioListAdapter.OnIt
             }
         });
 
+
+        player_sheet_back_btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                if (fileToPlay != null) {
+
+                    playerSheetBackBtn();
+                }
+
+            }
+        });
+        player_sheet_forward_btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                if (fileToPlay != null) {
+
+                    playerSheetForwardBtn();
+                }
+
+            }
+        });
+
+
         player_sheet_seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
@@ -118,14 +193,14 @@ public class AudioListFragment extends Fragment implements AudioListAdapter.OnIt
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
 
-                if(fileToPlay!=null){
+                if (fileToPlay != null) {
                     pauseAudio();
                 }
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                if(fileToPlay!=null){
+                if (fileToPlay != null) {
                     int progress = seekBar.getProgress();
                     mediaPlayer.seekTo(progress);
                     resumeAudio();
@@ -134,23 +209,91 @@ public class AudioListFragment extends Fragment implements AudioListAdapter.OnIt
         });
     }
 
-    @Override
-    public void onItemAudioListClick(File file, int position) {
-        fileToPlay = file;
-        Log.d(TAG, file.getName() + "");
+    private void playerSheetForwardBtn() {
 
-        if (isPlaying) {
+        if((mediaPlayer.getCurrentPosition() + 3000) < mediaPlayer.getDuration()){
 
-            stopAudio();
-            playAudio(fileToPlay);
-        } else {
-            playAudio(fileToPlay);
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+
+                    playerHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+
+                            mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() + 3000);
+                            player_sheet_seekBar.setProgress(mediaPlayer.getCurrentPosition());
+                            // start time forwards 3 secs
+                            counterTime = counterTime + 3;
+                            String counterTimeResult = DateConverter.counterTimeStandardFormat(Long.parseLong(getFileDuration(fileToPlay)), counterTime);
+                            Log.d(TAG, "counterTimeResult im forward: " + counterTimeResult);
+                            Log.d(TAG, "File duration in forward: " + getFileDuration(fileToPlay));
+                            player_sheet_start_time.setText(counterTimeResult);
+                        }
+                    });
+
+                }
+            }).start();
+
+
+        }else{
+
+            mediaPlayer.seekTo(mediaPlayer.getDuration());
+            player_sheet_seekBar.setProgress(mediaPlayer.getDuration());
+            player_sheet_start_time.setText(player_sheet_end_time.getText().toString());
+
         }
+
     }
 
-    private void playAudio(File fileToPlay) {
+    private void playerSheetBackBtn() {
 
-        mediaPlayer = new MediaPlayer();
+        if((mediaPlayer.getCurrentPosition() - 3000) > 0){
+
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+
+                    playerHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+
+                            mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() - 3000);
+                            player_sheet_seekBar.setProgress(mediaPlayer.getCurrentPosition());
+                            // start time forwards 3 secs
+                            counterTime = counterTime - 3;
+                            if(counterTime<0){
+                                counterTime = 0;
+                            }
+                            String counterTimeResult = DateConverter.counterTimeStandardFormat(Long.parseLong(getFileDuration(fileToPlay)), counterTime);
+                            Log.d(TAG, "counterTimeResult im forward: " + counterTimeResult);
+                            Log.d(TAG, "File duration in forward: " + getFileDuration(fileToPlay));
+                            player_sheet_start_time.setText(counterTimeResult);
+                        }
+                    });
+
+                }
+            }).start();
+
+
+        }else{
+
+            mediaPlayer.seekTo(0);
+            player_sheet_seekBar.setProgress(0);
+            counterTime = 0;
+            String counterTimeResult = DateConverter.counterTimeStandardFormat(Long.parseLong(getFileDuration(fileToPlay)), counterTime);
+            Log.d(TAG, "counterTimeResult im forward: " + counterTimeResult);
+            Log.d(TAG, "File duration in forward: " + getFileDuration(fileToPlay));
+            player_sheet_start_time.setText(counterTimeResult);
+        }
+
+
+    }
+
+
+    private void playAudio(File fileToPlay) {
+//      mediaPlayer = new MediaPlayer();
+        mediaPlayer.reset();
         bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
         try {
             mediaPlayer.setDataSource(fileToPlay.getAbsolutePath());
@@ -159,21 +302,24 @@ public class AudioListFragment extends Fragment implements AudioListAdapter.OnIt
         } catch (IOException e) {
             e.printStackTrace();
         }
-        play_btn.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.player_pause_btn, null));
+
+        player_sheet_play_btn.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.player_pause_btn, null));
         player_sheet_title.setText("Playing");
         player_sheet_fileName.setText(fileToPlay.getName());
         isPlaying = true;
 
-        player_sheet_seekBar.setMax(mediaPlayer.getDuration());
+        player_sheet_seekBar.setMax(mediaPlayer.getDuration()); //  mSecond order
         playerHandler = new Handler();
         updateSeekBarPlayer();
+        counterTime = -1;
+        updateCounterTime();
 
 
         mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
             @Override
             public void onCompletion(MediaPlayer mediaPlayer) {
-                player_sheet_title.setText("Finished");
                 stopAudio();
+                player_sheet_title.setText("Finished");
 
             }
         });
@@ -183,31 +329,36 @@ public class AudioListFragment extends Fragment implements AudioListAdapter.OnIt
 
     private void stopAudio() {
 
-        play_btn.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.player_play_btn, null));
+        player_sheet_play_btn.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.player_play_btn, null));
         mediaPlayer.stop();
         player_sheet_title.setText("Stopped");
         isPlaying = false;
-        playerHandler.removeCallbacks(playerRunnable);
+        playerHandler.removeCallbacks(seekBarRunnable);
+        playerHandler.removeCallbacks(counterTimeRunnable);
     }
 
     private void pauseAudio() {
         mediaPlayer.pause();
         isPlaying = false;
-        play_btn.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.player_play_btn, null));
-        playerHandler.removeCallbacks(playerRunnable);
+        player_sheet_play_btn.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.player_play_btn, null));
+        playerHandler.removeCallbacks(seekBarRunnable);
+        playerHandler.removeCallbacks(counterTimeRunnable);
 
     }
 
     private void resumeAudio() {
         mediaPlayer.start();
+        counterTime = player_sheet_seekBar.getProgress() / 1000;
+        //Log.i(TAG, "counterTime: "+player_sheet_seekBar.getProgress()/1000);
+        updateCounterTime();
         isPlaying = true;
-        play_btn.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.player_pause_btn, null));
+        player_sheet_play_btn.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.player_pause_btn, null));
         updateSeekBarPlayer();
 
     }
 
     private void updateSeekBarPlayer() {
-        playerRunnable = new Runnable() {
+        seekBarRunnable = new Runnable() {
             @Override
             public void run() {
                 player_sheet_seekBar.setProgress(mediaPlayer.getCurrentPosition());
@@ -215,7 +366,7 @@ public class AudioListFragment extends Fragment implements AudioListAdapter.OnIt
             }
         };
 
-        playerHandler.post(playerRunnable);
+        playerHandler.post(seekBarRunnable);
     }
 
 
@@ -226,4 +377,107 @@ public class AudioListFragment extends Fragment implements AudioListAdapter.OnIt
             stopAudio();
         }
     }
+
+    @Override
+    public void onItemAudioListClick(List<RecordingListItem> recordingListForRecycler, final int position, boolean longClick) {
+
+        if (longClick) {
+            onLongClickTask(recordingListForRecycler, position);
+        } else {
+
+            fileToPlay = recordingListForRecycler.get(position).getFile();
+
+            if (isPlaying) {
+
+                stopAudio();
+                playAudio(fileToPlay);
+            } else {
+                playAudio(fileToPlay);
+            }
+
+            player_sheet_end_time.setText(DateConverter.timeStandardFormat(Long.parseLong(getFileDuration(fileToPlay))));
+
+        }
+    }
+
+
+    private void onLongClickTask(final List<RecordingListItem> recordingListForRecycler, final int position) {
+        new AlertDialog.Builder(requireActivity())
+                .setTitle("Attention!")
+                .setMessage("Delete this file?")
+                .setPositiveButton("yes", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+
+                       /*
+                            delete file from directory
+                        */
+                        File deletedFile = new File(recordingListForRecycler.get(position).getFile().getAbsolutePath());
+                        boolean res = deletedFile.delete();
+                        //delete file from files array and consequently from recycler view
+                        if (res) {
+                            recordingListForRecycler.remove(position);
+
+                            /*
+                                new data should pass to adapter
+                             */
+                            audioListAdapter.setData(recordingListForRecycler);
+                            audioListAdapter.notifyDataSetChanged();
+                            Toast.makeText(requireActivity(), "selected file delete.", Toast.LENGTH_SHORT).show();
+
+                        } else {
+                            Toast.makeText(requireActivity(), "selected file can Not delete. please try again.", Toast.LENGTH_SHORT).show();
+                        }
+
+                    }
+                })
+                .setNegativeButton("No", null)
+                .create()
+                .show();
+    }
+
+
+    private void updateCounterTime() {
+
+        counterTimeRunnable = new Runnable() {
+            @Override
+            public void run() {
+                counterTime++;
+                String counterTimeResult = DateConverter.counterTimeStandardFormat(Long.parseLong(getFileDuration(fileToPlay)), counterTime);
+                Log.d(TAG, "counterTimeResult: " + counterTimeResult);
+                Log.d(TAG, "File duration: " + getFileDuration(fileToPlay));
+
+                player_sheet_start_time.setText(counterTimeResult);
+                playerHandler.postDelayed(this, 1000);
+            }
+        };
+
+        playerHandler.post(counterTimeRunnable);
+
+
+    }
+
+    private String getFileDuration(File sourceFile) {
+
+        mediaMetadataRetriever = new MediaMetadataRetriever();
+        mediaMetadataRetriever.setDataSource(sourceFile.getAbsolutePath());
+
+        String duration = mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+
+        return duration;
+
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

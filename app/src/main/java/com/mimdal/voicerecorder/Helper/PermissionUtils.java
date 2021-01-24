@@ -3,21 +3,24 @@ package com.mimdal.voicerecorder.Helper;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 
 public class PermissionUtils {
 
+
     /*
         inside the shared preference file, store information about weather the application
         launches for first time or not.
      */
     private Activity activity;
-    private @NonNull
-    PermissionAskListener permissionAskListener;
+    private @NonNull PermissionAskListener permissionAskListener;
     private String[] permissions;
     private static final String PREFS_FIRST_TIME_KEY = "is_app_launched_first_time";
+
+    private static final String TAG = "PermissionUtils";
 
     public PermissionUtils(Activity activity, @NonNull PermissionAskListener permissionAskListener, String[] permissions) {
         this.activity = activity;
@@ -93,6 +96,7 @@ public class PermissionUtils {
                             user denied permission earlier WITHOUT checking "never ask again"
                          */
                     permissionAskListener.onPermissionPreviouslyDenied();
+                    Log.d(TAG, "onPermissionPreviouslyDenied() is called");
 
                 } else {
 
@@ -102,6 +106,7 @@ public class PermissionUtils {
                              */
                         setApplicationRunFirstTime();
                         permissionAskListener.onPermissionRequest();
+                        Log.d(TAG, "onPermissionRequest() is called");
 
                     } else {
                             /*
@@ -109,14 +114,18 @@ public class PermissionUtils {
                              */
 
                         permissionAskListener.onPermissionDisabled();
+                        Log.d(TAG, "onPermissionDisabled() is called");
 
                     }
 
                 }
             } else {
                 permissionAskListener.onPermissionGranted();
-
+                Log.d(TAG, "onPermissionGranted() is called");
             }
+
+        }else{
+            permissionAskListener.onPermissionGranted();
 
         }
 

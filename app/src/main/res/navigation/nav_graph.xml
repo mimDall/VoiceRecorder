@@ -21,5 +21,10 @@
         android:id="@+id/audioListFragment"
         android:name="com.mimdal.voicerecorder.fragments.AudioListFragment"
         android:label="fragment_audio_list"
-        tools:layout="@layout/fragment_audio_list" />
+        tools:layout="@layout/fragment_audio_list" >
+        <argument
+            android:name="duration"
+            app:argType="long"
+            android:defaultValue="0L" />
+    </fragment>
 </navigation>
